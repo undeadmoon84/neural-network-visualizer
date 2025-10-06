@@ -1,4 +1,4 @@
-# neural_network_visualizer.py (Corrected for Keras 3.x Saving)
+# neural_network_visualizer.py (Corrected for Keras 3.x Model Loading)
 
 import streamlit as st
 import tensorflow as tf
@@ -9,12 +9,10 @@ import matplotlib.cm as cm
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 import os
-# shutil is no longer needed
 
 # --- MODEL TRAINING & LOADING ---
-# Corrected: Use the recommended .keras extension for saving.
 MODEL_PATH = "mnist_model.keras"
-MAX_NODES_TO_VISUALIZE = 16 # Max nodes to show per layer in the visualization
+MAX_NODES_TO_VISUALIZE = 16
 
 def create_model():
     """Defines the neural network architecture."""
@@ -39,7 +37,6 @@ def train_and_save_model():
         model = create_model()
         model.fit(train_images, train_labels, epochs=5, verbose=0)
         
-        # Corrected: Remove the old model *file* if it exists.
         if os.path.exists(MODEL_PATH):
             os.remove(MODEL_PATH)
             
@@ -47,7 +44,6 @@ def train_and_save_model():
     st.success(f"Model trained and saved to '{MODEL_PATH}'")
     return model
 
-# Load the pre-trained model, or train if it doesn't exist.
 @st.cache_resource
 def load_model():
     """Loads the saved model from disk, or trains a new one."""
@@ -58,15 +54,10 @@ def load_model():
         print("Model not found. Training a new one.")
         return train_and_save_model()
 
-# --- VISUALIZATION FUNCTION (REWRITTEN FOR PERFORMANCE) ---
+# --- VISUALIZATION FUNCTION ---
 
 def draw_neural_network(ax, activations):
-    """
-    Draws the neural network with activations highlighted.
-    Handles large layers by subsampling nodes for visualization.
-    - ax: Matplotlib axis object.
-    - activations: A list of numpy arrays with layer activations.
-    """
+    """Draws the neural network with activations highlighted."""
     ax.clear()
     ax.axis('off')
 
@@ -76,7 +67,6 @@ def draw_neural_network(ax, activations):
     layer_xs = np.linspace(0, 1, num_layers)
     cmap = plt.get_cmap('viridis')
 
-    # --- Subsampling Logic for Large Layers ---
     node_ys_viz = []
     node_indices_viz = []
     for size in layer_sizes:
@@ -91,19 +81,16 @@ def draw_neural_network(ax, activations):
             node_indices_viz.append(np.arange(size))
             node_ys_viz.append(np.linspace(0, 1, size))
             
-    # Draw connections between VISIBLE nodes only
     for i in range(num_layers - 1):
         for j_idx in range(len(node_ys_viz[i])):
             for k_idx in range(len(node_ys_viz[i+1])):
                 ax.plot([layer_xs[i], layer_xs[i+1]], [node_ys_viz[i][j_idx], node_ys_viz[i+1][k_idx]], 'k-', alpha=0.05, lw=0.5)
 
-    # Draw nodes
     for i, (activation_layer, size) in enumerate(zip(activations, layer_sizes)):
         activation_values = activation_layer.flatten()
         current_indices = node_indices_viz[i]
         current_ys = node_ys_viz[i]
 
-        # Add ellipsis '⋮' for subsampled layers
         if len(current_indices) < size:
             mid_y_idx = len(current_ys) // 2
             mid_y = (current_ys[mid_y_idx-1] + current_ys[mid_y_idx]) / 2
@@ -116,7 +103,6 @@ def draw_neural_network(ax, activations):
             circle = plt.Circle((layer_xs[i], current_ys[j_viz_idx]), radius, color=color, ec='k', zorder=4)
             ax.add_patch(circle)
             
-            # Add labels for the output layer
             if i == num_layers - 1:
                 ax.text(layer_xs[i] + 0.08, current_ys[j_viz_idx], f"{j_original_idx}", ha='center', va='center', fontsize=10)
     
@@ -151,7 +137,6 @@ col1, col2 = st.columns([1, 2])
 
 with col1:
     st.header("Input Canvas")
-    
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)",
         stroke_width=20,
@@ -162,12 +147,10 @@ with col1:
         drawing_mode="freedraw",
         key="canvas",
     )
-
     predict_button = st.button("✨ Predict")
 
 with col2:
     st.header("Visualization & Output")
-
     fig, ax = plt.subplots(figsize=(8, 6))
     plot_placeholder = st.empty()
     prediction_placeholder = st.empty()
@@ -175,6 +158,7 @@ with col2:
     initial_activations = [np.zeros((1, output.shape[-1])) for output in activation_model.outputs]
     draw_neural_network(ax, initial_activations)
     plot_placeholder.pyplot(fig)
+    plt.close(fig) # Close figure right after initial plot to save memory
 
 if predict_button and canvas_result.image_data is not None:
     # Preprocess the image
@@ -188,9 +172,10 @@ if predict_button and canvas_result.image_data is not None:
     # Get activations
     activations = activation_model.predict(img_reshaped)
     
+    # Redraw the plot with new activations
+    fig, ax = plt.subplots(figsize=(8, 6)) # Create a new figure for the update
     draw_neural_network(ax, activations)
     plot_placeholder.pyplot(fig)
-    
     plt.close(fig)
     
     # Display Prediction

@@ -1,4 +1,4 @@
-# neural_network_visualizer.py (Refactored)
+# neural_network_visualizer.py (Upgraded and Corrected)
 
 import streamlit as st
 import tensorflow as tf
@@ -9,16 +9,23 @@ from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 import os
 
+# Per Streamlit documentation, this must be the first Streamlit command executed.
+st.set_page_config(
+    layout="wide",
+    page_title="Interactive CNN Visualization",
+    page_icon="🧠"
+)
+
 # --- CONFIGURATION ---
 MODEL_PATH = "mnist_model.keras"
-MAX_NODES_TO_VISUALIZE = 16  # Max nodes to show per layer in the visualization
+MAX_NODES_TO_VISUALIZE = 16
 
 # --- DATA HANDLING ---
 def load_mnist_data():
     """Loads and preprocesses the MNIST dataset for a CNN."""
     mnist = keras.datasets.mnist
     (train_images, train_labels), _ = mnist.load_data()
-    # Normalize and expand dimensions for CNN
+    # Normalize and expand dimensions for CNN input
     train_images = train_images.astype("float32") / 255.0
     train_images = np.expand_dims(train_images, -1)
     return train_images, train_labels
@@ -47,7 +54,7 @@ def train_and_save_model():
         train_images, train_labels = load_mnist_data()
         model = create_cnn_model()
 
-        # --- Data Augmentation ---
+        # Use ImageDataGenerator for data augmentation
         datagen = keras.preprocessing.image.ImageDataGenerator(
             rotation_range=10,
             zoom_range=0.1,
@@ -85,7 +92,6 @@ def load_model():
 def get_activation_model(_model):
     """
     Creates a new model from an existing one to output intermediate activations.
-    Uses the Keras Functional API to build the activation model.
     """
     # The input shape must match the model's expected input
     inputs = keras.Input(shape=(28, 28, 1))
@@ -98,13 +104,7 @@ def get_activation_model(_model):
 
 # --- VISUALIZATION ---
 def display_feature_maps(activations, model_layers):
-    """
-    Displays the feature maps from convolutional and pooling layers.
-
-    Args:
-        activations (list): List of all layer activations.
-        model_layers (list): List of all model layers.
-    """
+    """Displays the feature maps from convolutional and pooling layers."""
     st.write("### Feature Map Activations")
     st.info("Feature maps from convolutional layers show learned patterns like edges and textures.")
 
@@ -129,10 +129,7 @@ def display_feature_maps(activations, model_layers):
         st.markdown("---")
 
 def draw_neural_network(ax, activations):
-    """
-    Draws the dense part of the neural network and highlights neuron activations.
-    Subsamples nodes for large layers to maintain visual clarity.
-    """
+    """Draws the dense part of the neural network and highlights neuron activations."""
     ax.clear()
     ax.axis('off')
     ax.set_title("Dense Layer Activations", fontsize=14)
@@ -180,7 +177,6 @@ def draw_neural_network(ax, activations):
 # --- STREAMLIT UI ---
 def setup_ui():
     """Sets up the Streamlit page layout and interactive elements."""
-    st.set_page_config(layout="wide")
     st.title("🧠 Interactive CNN Visualization for MNIST")
     st.markdown("Draw a digit to see the CNN's feature maps and predictions!")
 
